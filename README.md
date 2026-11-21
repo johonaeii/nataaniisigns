@@ -155,8 +155,10 @@ Docker.
 2. **Apply the schema**, choosing one:
    - Supabase CLI: `npx supabase init` (once; keeps the existing `supabase/migrations`), then
      `npx supabase link --project-ref <ref>` and `npx supabase db push`.
-   - Or paste `supabase/migrations/20261121000000_sign_shop.sql` into the dashboard's
-     **SQL Editor** and run it once.
+   - Or, in the dashboard's **SQL Editor**, run each file in `supabase/migrations/` **in
+     order** (oldest first), each in its own new query, once:
+     1. `20261121000000_sign_shop.sql`
+     2. `20261122000000_explicit_table_grants.sql`
 
    This creates the tables, functions, RLS policies, and the public `sign-photos` storage
    bucket with admin-only upload policies.

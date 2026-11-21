@@ -1,8 +1,12 @@
-// In-process Postgres (PGlite) loaded with the real Supabase migration, so the
+// In-process Postgres (PGlite) loaded with the real Supabase migrations, so the
 // SQL functions, constraints, grants, and RLS policies are tested for real.
 // Minimal stand-ins for Supabase's roles, auth schema, and storage schema are
-// created first, including Supabase's permissive default grants, so the
-// migration's revokes are exercised too.
+// created first.
+//
+// Supabase projects differ in default privileges: older projects automatically
+// grant every new public table to anon/authenticated/service_role ("legacy");
+// newer ones grant nothing ("strict"). The migrations must work under both, so
+// tests default to strict and tests/db/grants.test.ts compares the two.
 
 import { PGlite, type Transaction } from '@electric-sql/pglite';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -16,9 +20,6 @@ create role authenticated nologin noinherit;
 create role service_role nologin noinherit bypassrls;
 
 grant usage on schema public to anon, authenticated, service_role;
-alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
-alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 
 create schema auth;
 grant usage on schema auth to anon, authenticated, service_role;
@@ -57,16 +58,29 @@ function migrationSql(): string {
     .join('\n');
 }
 
-let template: Promise<PGlite> | null = null;
+const LEGACY_DEFAULT_PRIVILEGES = `
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+`;
 
-/** Build the schema once per test file, then clone it for each test (fast, isolated). */
-async function getTemplate(): Promise<PGlite> {
-  template ??= (async () => {
-    const db = await PGlite.create();
-    await db.exec(SUPABASE_STUBS);
-    await db.exec(migrationSql());
-    return db;
-  })();
+export type DefaultPrivileges = 'strict' | 'legacy';
+
+const templates = new Map<DefaultPrivileges, Promise<PGlite>>();
+
+/** Build the schema once per test file and mode, then clone it for each test (fast, isolated). */
+async function getTemplate(mode: DefaultPrivileges): Promise<PGlite> {
+  let template = templates.get(mode);
+  if (!template) {
+    template = (async () => {
+      const db = await PGlite.create();
+      await db.exec(SUPABASE_STUBS);
+      if (mode === 'legacy') await db.exec(LEGACY_DEFAULT_PRIVILEGES);
+      await db.exec(migrationSql());
+      return db;
+    })();
+    templates.set(mode, template);
+  }
   return template;
 }
 
@@ -84,8 +98,8 @@ export interface TestDb {
   close(): Promise<void>;
 }
 
-export async function createTestDb(): Promise<TestDb> {
-  const db = (await (await getTemplate()).clone()) as PGlite;
+export async function createTestDb(options: { defaults?: DefaultPrivileges } = {}): Promise<TestDb> {
+  const db = (await (await getTemplate(options.defaults ?? 'strict')).clone()) as PGlite;
 
   const as: TestDb['as'] = (role, userId, fn) =>
     db.transaction(async (tx) => {
