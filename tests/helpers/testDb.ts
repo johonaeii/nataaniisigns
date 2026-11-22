@@ -115,6 +115,8 @@ export async function createTestDb(options: { defaults?: DefaultPrivileges } = {
     const values = keys.map((key) => {
       const value = args[key];
       if (value === undefined || value === null) return null;
+      // Arrays of strings are Postgres arrays (e.g. text[]); other objects are jsonb.
+      if (Array.isArray(value) && value.every((v) => typeof v === 'string')) return value;
       return typeof value === 'object' ? JSON.stringify(value) : value;
     });
     const sql = `select public.${fn}(${keys.map((key, i) => `${key} => $${i + 1}`).join(', ')}) as result`;

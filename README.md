@@ -82,6 +82,23 @@ The conservative default means a request holds signs until the owner acts. If sp
 no-shows become a problem, set `REQUEST_AUTO_RELEASE_HOURS`. The scheduled job then cancels
 **unconfirmed, unpaid** requests older than that and emails the customer.
 
+### Custom sign requests
+
+Anyone can ask for a custom sign at `/custom`. They enter their name, an email or phone number,
+a description, and up to 4 optional photos or sketches. Nothing is charged; the owner follows up
+directly.
+
+- Photos are resized in the browser, then sent to `/api/custom-requests`. The server checks each
+  file's actual content (JPEG, PNG, or WebP only; at most 3 MB each). It then stores the photos
+  in the **private** `custom-request-photos` bucket. Only admins can view them, through
+  temporary links.
+- Spam limits: 5 requests per visitor per hour and 50 per day overall (change them in
+  `create_custom_request()`), plus the honeypot field. Visitors are identified by a keyed hash
+  of their IP address; the IP itself is never stored.
+- The owner sees requests under **Admin → Custom** and can track their status (New, In progress,
+  Completed, Declined). Changing the status doesn't notify the customer; reply by email, text,
+  or phone.
+
 ### Security model
 
 - **Browsers only get the Supabase anon/publishable key.** Row Level Security lets visitors read
@@ -159,6 +176,7 @@ Docker.
      order** (oldest first), each in its own new query, once:
      1. `20261121000000_sign_shop.sql`
      2. `20261122000000_explicit_table_grants.sql`
+     3. `20261123000000_custom_requests.sql`
 
    This creates the tables, functions, RLS policies, and the public `sign-photos` storage
    bucket with admin-only upload policies.
@@ -240,7 +258,9 @@ Optional. With `RESEND_API_KEY`, `EMAIL_FROM`, and `OWNER_EMAIL` set:
 
 - Customers who give an email get: request received (with their order link), payment
   received, request confirmed, in-person payment recorded, order canceled, request released.
-- The owner gets: new request, new paid order, and "needs review" alerts.
+- The owner gets: new request, new paid order, "needs review" alerts, and new custom sign
+  requests (with the description and contact details; photos stay in the admin area).
+- Customers who send a custom sign request with an email get a "request received" email.
 
 `EMAIL_FROM` must use a domain verified in Resend (Resend's `onboarding@resend.dev` test
 sender only delivers to your own Resend account email). Without these variables, emails are
@@ -295,6 +315,10 @@ Go to `/admin` and sign in with the owner account.
   - If a customer reserves a sign while you're editing it, saving is refused with a
     "reload" prompt, so you can't accidentally overwrite the stock count.
   - Signs that appear in past orders can't be deleted. Hide them instead.
+
+- **Custom** → custom sign requests, newest first. Open one to read the description, view or
+  download the photos, and contact the customer. Set the status to keep track. **Delete
+  request** removes the request and its photos (useful for spam, or once a job is finished).
 
 Each sign has its own page (`/signs/<id>`), which works well for a per-sign QR code.
 

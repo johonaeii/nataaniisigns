@@ -141,3 +141,25 @@ export interface ApiErrorBody {
   signId?: string;
   subtotalCents?: number;
 }
+
+export const CUSTOM_REQUEST_STATUSES = ['new', 'in_progress', 'completed', 'declined'] as const;
+export type CustomRequestStatus = (typeof CUSTOM_REQUEST_STATUSES)[number];
+
+/** A custom sign request as the server creates it and the admin UI reads it. */
+export interface CustomRequestRow {
+  id: string;
+  request_number: number;
+  status: CustomRequestStatus;
+  customer_name: string;
+  customer_email: string | null;
+  customer_phone: string | null;
+  description: string;
+  photo_paths: string[];
+  created_at: string;
+  updated_at?: string;
+}
+
+/** Response from POST /api/custom-requests. */
+export interface CreateCustomRequestResponse {
+  requestNumber: number;
+}

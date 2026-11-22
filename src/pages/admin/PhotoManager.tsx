@@ -1,7 +1,7 @@
 import { useId, useState, type ChangeEvent } from 'react';
 import { Notice, SignImage, Spinner } from '../../components/ui';
 import { PHOTO_BUCKET } from '../../config';
-import { extensionFor, resizeImage } from './images';
+import { extensionFor, resizeImage } from '../../lib/images';
 import { requireSupabase } from './supabaseClient';
 
 export const MAX_PHOTOS = 8;

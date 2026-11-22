@@ -3,7 +3,7 @@ import { createBrowserRouter, RouterProvider, useRouteError } from 'react-router
 import { Layout } from './components/Layout';
 import { Notice, Spinner } from './components/ui';
 import { CartProvider } from './lib/CartContext';
-import { loadCheckoutPage } from './lib/lazyPages';
+import { loadCheckoutPage, loadCustomRequestPage } from './lib/lazyPages';
 import { CartPage } from './pages/CartPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { OrderPage } from './pages/OrderPage';
@@ -16,6 +16,7 @@ const AdminApp = lazy(() => import('./pages/admin/AdminApp'));
 
 // Checkout (with its form validation library) loads on demand; the cart page prefetches it.
 const CheckoutPage = lazy(() => loadCheckoutPage().then((m) => ({ default: m.CheckoutPage })));
+const CustomRequestPage = lazy(() => loadCustomRequestPage().then((m) => ({ default: m.CustomRequestPage })));
 
 function RouteError() {
   const error = useRouteError();
@@ -54,6 +55,14 @@ const router = createBrowserRouter([
         ),
       },
       { path: 'order/:orderId', element: <OrderPage /> },
+      {
+        path: 'custom',
+        element: (
+          <Suspense fallback={<Spinner label="Loading…" />}>
+            <CustomRequestPage />
+          </Suspense>
+        ),
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

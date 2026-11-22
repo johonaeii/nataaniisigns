@@ -1,4 +1,6 @@
-// Shrink phone photos before upload so the shop stays fast on mobile data.
+// Shrink phone photos in the browser before upload: faster on mobile data and
+// well under the server's size limits. Used by the admin photo manager and the
+// custom sign request form.
 
 const MAX_DIMENSION = 1600;
 const QUALITY = 0.85;

@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { CUSTOM_PHOTO_BUCKET } from '../shared/customRequests';
 import { loadConfig } from './config';
+import { createCustomRequestRepo } from './customRequests';
 import { supabaseRpc } from './db';
 import type { AdminAuthResult, AppDeps } from './deps';
 import { createDisabledMailer, createResendMailer } from './email';
@@ -8,6 +10,7 @@ import { consoleLogger } from './log';
 import { createNotifier } from './notifications';
 import { createOrderRepo } from './orders';
 import { createStripeGateway } from './payments';
+import { supabasePhotoStore } from './photoStore';
 
 let cached: AppDeps | null = null;
 
@@ -32,10 +35,13 @@ export function getDeps(): AppDeps {
       ? createResendMailer({ apiKey: config.resendApiKey, from: config.emailFrom, log })
       : createDisabledMailer(log);
 
+  const rpc = supabaseRpc(supabase);
   cached = {
     config,
     log,
-    repo: createOrderRepo(supabaseRpc(supabase)),
+    repo: createOrderRepo(rpc),
+    customRequests: createCustomRequestRepo(rpc),
+    customPhotos: supabasePhotoStore(supabase, CUSTOM_PHOTO_BUCKET),
     payments:
       config.stripeSecretKey && config.stripeWebhookSecret
         ? createStripeGateway(config.stripeSecretKey, config.stripeWebhookSecret)

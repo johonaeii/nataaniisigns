@@ -14,19 +14,24 @@ export function Layout() {
           <Link to="/" className="brand">
             {SHOP_NAME}
           </Link>
-          <NavLink to="/cart" className="cart-link" aria-label={`Cart, ${count} ${count === 1 ? 'item' : 'items'}`}>
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="20" r="1.5" />
-              <circle cx="18" cy="20" r="1.5" />
-              <path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 7H6" />
-            </svg>
-            <span>Cart</span>
-            {count > 0 && (
-              <span className="cart-count" aria-hidden="true">
-                {count}
-              </span>
-            )}
-          </NavLink>
+          <nav className="header-nav" aria-label="Main">
+            <NavLink to="/custom" className="header-link">
+              Custom signs
+            </NavLink>
+            <NavLink to="/cart" className="cart-link" aria-label={`Cart, ${count} ${count === 1 ? 'item' : 'items'}`}>
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="20" r="1.5" />
+                <circle cx="18" cy="20" r="1.5" />
+                <path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 7H6" />
+              </svg>
+              <span>Cart</span>
+              {count > 0 && (
+                <span className="cart-count" aria-hidden="true">
+                  {count}
+                </span>
+              )}
+            </NavLink>
+          </nav>
         </div>
       </header>
       <main id="main" className="container main">

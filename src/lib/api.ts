@@ -1,6 +1,13 @@
 // Calls to this site's Netlify functions (/api/*).
 
-import type { AdminAction, ApiErrorBody, CreateOrderResponse, CustomerOrder, PrivateOrder } from '../../shared/types';
+import type {
+  AdminAction,
+  ApiErrorBody,
+  CreateCustomRequestResponse,
+  CreateOrderResponse,
+  CustomerOrder,
+  PrivateOrder,
+} from '../../shared/types';
 import type { OrderRequest } from '../../shared/validation';
 
 export class ApiError extends Error {
@@ -19,7 +26,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(path, {
       ...init,
-      headers: { Accept: 'application/json', ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...init?.headers },
+      // JSON bodies are strings; FormData (file uploads) must let the browser set its own Content-Type.
+      headers: {
+        Accept: 'application/json',
+        ...(typeof init?.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+        ...init?.headers,
+      },
     });
   } catch (error) {
     if ((error as Error).name === 'AbortError') throw error;
@@ -47,6 +59,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   createOrder(order: OrderRequest): Promise<CreateOrderResponse> {
     return request('/api/orders', { method: 'POST', body: JSON.stringify(order) });
+  },
+
+  /** Fields: name, email, phone, description, website, and up to 4 "photos" files. */
+  createCustomRequest(form: FormData): Promise<CreateCustomRequestResponse> {
+    return request('/api/custom-requests', { method: 'POST', body: form });
   },
 
   async orderStatus(orderId: string, token: string, signal?: AbortSignal): Promise<CustomerOrder> {

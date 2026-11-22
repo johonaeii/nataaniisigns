@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { formatCents } from '../../shared/money';
 import type { PaymentChoice, PickupMethod } from '../../shared/types';
 import { fieldErrorsFromZod, orderRequestSchema, type OrderRequest } from '../../shared/validation';
+import { TextField } from '../components/TextField';
 import { Notice, Spinner, useDocumentTitle } from '../components/ui';
 import { LOCAL_PICKUP_DETAILS, MARKET_PICKUP_DETAILS, ONLINE_PAYMENTS_ENABLED } from '../config';
 import { ApiError, api } from '../lib/api';
@@ -330,54 +331,6 @@ export function CheckoutPage() {
         )}
       </form>
     </>
-  );
-}
-
-function TextField(props: {
-  id: string;
-  field: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-  hint?: ReactNode;
-  type?: string;
-  inputMode?: 'email' | 'tel' | 'text';
-  autoComplete?: string;
-  required?: boolean;
-}) {
-  const describedBy = [props.hint ? `${props.id}-hint` : null, props.error ? `${props.id}-error` : null]
-    .filter(Boolean)
-    .join(' ');
-  return (
-    <div className="field">
-      <label htmlFor={props.id}>
-        {props.label}
-        {props.required && <span className="required" aria-hidden="true"> *</span>}
-      </label>
-      {props.hint && (
-        <p id={`${props.id}-hint`} className="hint">
-          {props.hint}
-        </p>
-      )}
-      <input
-        id={props.id}
-        data-field={props.field}
-        type={props.type ?? 'text'}
-        inputMode={props.inputMode}
-        autoComplete={props.autoComplete}
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-        required={props.required}
-        aria-invalid={Boolean(props.error)}
-        aria-describedby={describedBy || undefined}
-      />
-      {props.error && (
-        <p id={`${props.id}-error`} className="field-error">
-          {props.error}
-        </p>
-      )}
-    </div>
   );
 }
 

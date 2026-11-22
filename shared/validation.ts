@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CUSTOM_DESCRIPTION_MAX, CUSTOM_DESCRIPTION_MIN } from './customRequests';
 import { MAX_CART_LINES, MAX_QUANTITY_PER_SIGN } from './limits';
 import { ADMIN_ACTIONS, PAYMENT_CHOICES, PICKUP_METHODS } from './types';
 
@@ -76,6 +77,19 @@ export const adminActionSchema = z.object({
   orderId: z.uuid(),
   action: z.enum(ADMIN_ACTIONS),
 });
+
+/** Text fields of a custom sign request. Photos are validated separately (server: by file content). */
+export const customRequestSchema = z.object({
+  customer: customerSchema,
+  description: z
+    .string()
+    .trim()
+    .min(CUSTOM_DESCRIPTION_MIN, { error: 'Tell us a little more about the sign you want (at least a sentence).' })
+    .max(CUSTOM_DESCRIPTION_MAX, { error: `Please keep the description under ${CUSTOM_DESCRIPTION_MAX} characters.` }),
+  website: z.string().max(500).optional(),
+});
+
+export type CustomRequestInput = z.input<typeof customRequestSchema>;
 
 /** Flatten zod issues into { "customer.email": "message" } for form display. */
 export function fieldErrorsFromZod(error: z.ZodError): Record<string, string> {

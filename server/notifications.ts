@@ -1,6 +1,7 @@
+import { customRequestRef } from '../shared/customRequests';
 import { formatCents } from '../shared/money';
 import { PICKUP_LABEL } from '../shared/orderStatus';
-import type { AdminAction, PrivateOrder } from '../shared/types';
+import type { AdminAction, CustomRequestRow, PrivateOrder } from '../shared/types';
 import type { ServerConfig } from './config';
 import { escapeHtml, type EmailMessage, type Mailer } from './email';
 
@@ -11,6 +12,7 @@ export interface Notifier {
   ownerAction(order: PrivateOrder, action: AdminAction): Promise<void>;
   requestAutoReleased(order: PrivateOrder): Promise<void>;
   attentionNeeded(order: PrivateOrder): Promise<void>;
+  customRequestSubmitted(request: CustomRequestRow): Promise<void>;
 }
 
 interface EmailContent {
@@ -67,6 +69,48 @@ ${content.paragraphs.map((p) => `<p style="margin:0 0 12px">${escapeHtml(p)}</p>
 <tr><td style="padding:8px 12px 4px 0;border-top:1px solid #ddd"><strong>Total</strong></td><td style="padding:8px 0 4px;border-top:1px solid #ddd;text-align:right"><strong>${total}</strong></td></tr></table>
 <p style="margin:12px 0 0"><strong>Pickup:</strong> ${escapeHtml(pickup)}</p>
 ${notes ? `<p style="margin:4px 0 0"><strong>Notes:</strong> ${escapeHtml(order.customer_notes)}</p>` : ''}
+${content.showContact ? `<p style="margin:12px 0 0">${contact.map(escapeHtml).join('<br>')}</p>` : ''}
+${content.link ? `<p style="margin:20px 0 0"><a href="${escapeHtml(content.link.href)}" style="background:#1f5f5b;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;display:inline-block">${escapeHtml(content.link.label)}</a></p>` : ''}
+<p style="margin:24px 0 0;color:#6b625c">— ${escapeHtml(config.shopName)}</p>
+</body></html>`;
+
+  return { text, html };
+}
+
+function renderCustomRequest(
+  config: ServerConfig,
+  request: CustomRequestRow,
+  content: { heading: string; paragraphs: string[]; showContact: boolean; link?: { href: string; label: string } },
+): Pick<EmailMessage, 'text' | 'html'> {
+  const ref = customRequestRef(request.request_number);
+  const photos = request.photo_paths.length;
+  const photoLine = photos ? `${photos} photo${photos === 1 ? '' : 's'} attached (view in the admin area).` : 'No photos attached.';
+  const contact = [
+    `Name: ${request.customer_name}`,
+    request.customer_email ? `Email: ${request.customer_email}` : null,
+    request.customer_phone ? `Phone: ${request.customer_phone}` : null,
+  ].filter((line): line is string => line !== null);
+
+  const text = [
+    content.heading,
+    '',
+    ...content.paragraphs.flatMap((p) => [p, '']),
+    `Custom request ${ref}`,
+    request.description,
+    '',
+    photoLine,
+    ...(content.showContact ? ['', ...contact] : []),
+    ...(content.link ? ['', `${content.link.label}: ${content.link.href}`] : []),
+    '',
+    `— ${config.shopName}`,
+  ].join('\n');
+
+  const html = `<!doctype html><html><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f1a17;line-height:1.5;max-width:560px;margin:0 auto;padding:16px">
+<h1 style="font-size:20px;margin:0 0 12px">${escapeHtml(content.heading)}</h1>
+${content.paragraphs.map((p) => `<p style="margin:0 0 12px">${escapeHtml(p)}</p>`).join('\n')}
+<h2 style="font-size:16px;margin:20px 0 8px">Custom request ${ref}</h2>
+<p style="margin:0 0 12px;white-space:pre-wrap;background:#f6f2ec;padding:12px;border-radius:6px">${escapeHtml(request.description)}</p>
+<p style="margin:0 0 12px;color:#6b625c">${escapeHtml(photoLine)}</p>
 ${content.showContact ? `<p style="margin:12px 0 0">${contact.map(escapeHtml).join('<br>')}</p>` : ''}
 ${content.link ? `<p style="margin:20px 0 0"><a href="${escapeHtml(content.link.href)}" style="background:#1f5f5b;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;display:inline-block">${escapeHtml(content.link.label)}</a></p>` : ''}
 <p style="margin:24px 0 0;color:#6b625c">— ${escapeHtml(config.shopName)}</p>
@@ -176,6 +220,40 @@ export function createNotifier(config: ServerConfig, mailer: Mailer): Notifier {
         paragraphs: [order.attention_reason ?? 'Please review this order.'],
       });
     },
+
+    async customRequestSubmitted(request) {
+      const ref = customRequestRef(request.request_number);
+      const firstName = request.customer_name.trim().split(/\s+/)[0];
+      await Promise.all([
+        request.customer_email
+          ? mailer.send({
+              to: request.customer_email,
+              subject: `${config.shopName}: custom sign request ${ref} received`,
+              replyTo: config.ownerEmail ?? undefined,
+              ...renderCustomRequest(config, request, {
+                heading: `Thanks, ${firstName}! We received your custom sign request.`,
+                paragraphs: ["We'll look it over and get back to you with ideas and a price. Nothing has been charged."],
+                showContact: false,
+              }),
+            })
+          : Promise.resolve(),
+        config.ownerEmail
+          ? mailer.send({
+              to: config.ownerEmail,
+              subject: `New custom sign request ${ref} from ${request.customer_name}`,
+              replyTo: request.customer_email ?? undefined,
+              ...renderCustomRequest(config, request, {
+                heading: 'New custom sign request',
+                paragraphs: [],
+                showContact: true,
+                link: config.siteUrl
+                  ? { href: `${config.siteUrl}/admin/custom/${request.id}`, label: 'Open in admin' }
+                  : undefined,
+              }),
+            })
+          : Promise.resolve(),
+      ]);
+    },
   };
 }
 
@@ -186,4 +264,5 @@ export const nullNotifier: Notifier = {
   ownerAction: async () => {},
   requestAutoReleased: async () => {},
   attentionNeeded: async () => {},
+  customRequestSubmitted: async () => {},
 };

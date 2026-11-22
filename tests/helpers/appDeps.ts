@@ -3,8 +3,10 @@ import { loadConfig, type ServerConfig } from '../../server/config';
 import type { AppDeps } from '../../server/deps';
 import { silentLogger } from '../../server/log';
 import type { Notifier } from '../../server/notifications';
+import { createCustomRequestRepo } from '../../server/customRequests';
 import { createOrderRepo } from '../../server/orders';
 import type { PaymentGateway } from '../../server/payments';
+import type { PhotoStore } from '../../server/photoStore';
 import type { TestDb } from './testDb';
 
 export const WEBHOOK_SECRET = 'whsec_test_secret_for_unit_tests';
@@ -125,7 +127,32 @@ export function createRecordingNotifier(): Notifier & { sent: Notification[] } {
     ownerAction: async (order, action) => void sent.push({ kind: 'ownerAction', orderId: order.id, detail: action }),
     requestAutoReleased: async (order) => void sent.push({ kind: 'requestAutoReleased', orderId: order.id }),
     attentionNeeded: async (order) => void sent.push({ kind: 'attentionNeeded', orderId: order.id }),
+    customRequestSubmitted: async (request) =>
+      void sent.push({ kind: 'customRequestSubmitted', orderId: request.id }),
   };
+}
+
+export interface FakePhotoStore extends PhotoStore {
+  files: Map<string, { data: Uint8Array; contentType: string }>;
+  /** Make the Nth upload (1-based) fail. */
+  failOnUpload: number | null;
+}
+
+export function createFakePhotoStore(): FakePhotoStore {
+  let uploads = 0;
+  const store: FakePhotoStore = {
+    files: new Map(),
+    failOnUpload: null,
+    async upload(path, data, contentType) {
+      uploads += 1;
+      if (store.failOnUpload === uploads) throw new Error('storage unavailable');
+      store.files.set(path, { data, contentType });
+    },
+    async remove(paths) {
+      for (const path of paths) store.files.delete(path);
+    },
+  };
+  return store;
 }
 
 export const TEST_ENV = {
@@ -139,6 +166,7 @@ export const TEST_ENV = {
 export interface TestDeps extends AppDeps {
   payments: FakePayments | null;
   notify: ReturnType<typeof createRecordingNotifier>;
+  customPhotos: FakePhotoStore;
 }
 
 export function buildDeps(
@@ -148,6 +176,8 @@ export function buildDeps(
   return {
     config: { ...loadConfig(TEST_ENV), ...options.config },
     repo: createOrderRepo(t.rpc),
+    customRequests: createCustomRequestRepo(t.rpc),
+    customPhotos: createFakePhotoStore(),
     payments: options.payments === undefined ? createFakePayments() : options.payments,
     notify: createRecordingNotifier(),
     log: silentLogger,

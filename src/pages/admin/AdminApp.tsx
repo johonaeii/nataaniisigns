@@ -3,6 +3,8 @@ import { Link, NavLink, Route, Routes } from 'react-router';
 import { Notice, Spinner, useDocumentTitle } from '../../components/ui';
 import { SHOP_NAME } from '../../config';
 import { AdminAuthProvider, useAdminAuth } from './AdminAuth';
+import { CustomRequestDetailPage } from './CustomRequestDetailPage';
+import { CustomRequestsPage } from './CustomRequestsPage';
 import { OrderDetailPage } from './OrderDetailPage';
 import { OrdersPage } from './OrdersPage';
 import { SignEditPage } from './SignEditPage';
@@ -61,6 +63,7 @@ function AdminGate() {
               <NavLink to="/admin" end>
                 Orders
               </NavLink>
+              <NavLink to="/admin/custom">Custom</NavLink>
               <NavLink to="/admin/signs">Signs</NavLink>
               <a href="/" target="_blank" rel="noreferrer">
                 Shop ↗
@@ -75,6 +78,8 @@ function AdminGate() {
           <Routes>
             <Route index element={<OrdersPage />} />
             <Route path="orders/:orderId" element={<OrderDetailPage />} />
+            <Route path="custom" element={<CustomRequestsPage />} />
+            <Route path="custom/:requestId" element={<CustomRequestDetailPage />} />
             <Route path="signs" element={<SignsPage />} />
             <Route path="signs/new" element={<SignEditPage />} />
             <Route path="signs/:signId" element={<SignEditPage />} />

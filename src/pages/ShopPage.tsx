@@ -39,6 +39,9 @@ export function ShopPage() {
           <li>{ONLINE_PAYMENTS_ENABLED ? 'Pay online, or request them and pay in person.' : 'Request them. No payment needed now.'}</li>
           <li>Pick up at the market or arrange a local pickup.</li>
         </ol>
+        <p className="custom-callout">
+          Want something made just for you? <Link to="/custom">Request a custom sign →</Link>
+        </p>
         {recent && (
           <p className="recent-order">
             <Link to={orderPath(recent)}>View your recent order #{recent.orderNumber}</Link>
@@ -92,6 +95,11 @@ export function ShopPage() {
           </p>
           <h2>Everything's sold out right now</h2>
           <p>New signs are on the way. Check back soon or come see us at the market.</p>
+          <p>
+            <Link to="/custom" className="button">
+              Request a custom sign
+            </Link>
+          </p>
           {CONTACT_EMAIL && (
             <p>
               Looking for something specific? <a href={`mailto:${CONTACT_EMAIL}`}>Email us</a>.
